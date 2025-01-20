@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音声文字起こしアプリ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        h1, h2 {
+            color: #007bff;
+        }
+        label {
+            font-weight: bold;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        pre {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .file-input {
+            margin-bottom: 20px;
+        }
+        .links {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>音声文字起こしアプリ</h1>
+
+    <!-- ファイル選択 -->
+    <div class="file-input">
+        <label for="audioFile1">音声ファイル1を選択してください:</label>
+        <input type="file" id="audioFile1" accept=".wav,.mp3,.m4a,.mp4,.webm"><br><br>
+        <label for="audioFile2">音声ファイル2を選択してください:</label>
+        <input type="file" id="audioFile2" accept=".wav,.mp3,.m4a,.mp4,.webm"><br><br>
+        <label for="audioFile3">音声ファイル3を選択してください:</label>
+        <input type="file" id="audioFile3" accept=".wav,.mp3,.m4a,.mp4,.webm"><br><br>
+        <label for="audioFile4">音声ファイル4を選択してください:</label>
+        <input type="file" id="audioFile4" accept=".wav,.mp3,.m4a,.mp4,.webm"><br><br>
+        <label for="audioFile5">音声ファイル5を選択してください:</label>
+        <input type="file" id="audioFile5" accept=".wav,.mp3,.m4a,.mp4,.webm"><br><br>
+        <label for="audioFile6">音声ファイル6を選択してください:</label>
+        <input type="file" id="audioFile6" accept=".wav,.mp3,.m4a,.mp4,.webm">
+    </div>
+
+    <!-- 変換ボタン -->
+    <button id="transcribeButton" disabled>文字起こし開始</button>
+
+    <!-- 進行状況表示 -->
+    <p id="status">6つのファイルを選択してください。</p>
+
+    <!-- 文字起こし結果 -->
+    <h2>文字起こし結果</h2>
+    <pre id="transcriptionResult"></pre>
+
+    <!-- ダウンロードリンク -->
+    <div class="links">
+        <h2>結果をダウンロード</h2>
+        <a id="downloadLink" href="#" style="display: none;" target="_blank">結果をExcelでダウンロード</a><br>
+        <a id="audioDownloadLink1" href="#" style="display: none;" target="_blank">トリミングされた音声1を確認</a><br>
+        <a id="audioDownloadLink2" href="#" style="display: none;" target="_blank">トリミングされた音声2を確認</a><br>
+        <a id="audioDownloadLink3" href="#" style="display: none;" target="_blank">トリミングされた音声3を確認</a><br>
+        <a id="audioDownloadLink4" href="#" style="display: none;" target="_blank">トリミングされた音声4を確認</a><br>
+        <a id="audioDownloadLink5" href="#" style="display: none;" target="_blank">トリミングされた音声5を確認</a><br>
+        <a id="audioDownloadLink6" href="#" style="display: none;" target="_blank">トリミングされた音声6を確認</a>
+    </div>
+
+    <script>
+        const fileInputs = [
+            document.getElementById('audioFile1'),
+            document.getElementById('audioFile2'),
+            document.getElementById('audioFile3'),
+            document.getElementById('audioFile4'),
+            document.getElementById('audioFile5'),
+            document.getElementById('audioFile6')
+        ];
+        const transcribeButton = document.getElementById('transcribeButton');
+        const status = document.getElementById('status');
+        const transcriptionResult = document.getElementById('transcriptionResult');
+        const downloadLink = document.getElementById('downloadLink');
+        const audioDownloadLinks = [
+            document.getElementById('audioDownloadLink1'),
+            document.getElementById('audioDownloadLink2'),
+            document.getElementById('audioDownloadLink3'),
+            document.getElementById('audioDownloadLink4'),
+            document.getElementById('audioDownloadLink5'),
+            document.getElementById('audioDownloadLink6')
+        ];
+
+        function checkFilesSelected() {
+            const allFilesSelected = fileInputs.every(input => input.files.length > 0);
+            transcribeButton.disabled = !allFilesSelected;
+            status.textContent = allFilesSelected ? "文字起こしを開始できます。" : "6つのファイルを選択してください。";
+        }
+
+        fileInputs.forEach(input => input.addEventListener('change', checkFilesSelected));
+
+        transcribeButton.addEventListener('click', async () => {
+            status.textContent = "文字起こしを行っています...";
+            const formData = new FormData();
+            fileInputs.forEach((input, index) => {
+                formData.append(`file${index + 1}`, input.files[0]);
+            });
+
+            try {
+                const response = await fetch("http://localhost:5000/transcribe_six_files", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const results = result.results;
+
+                    transcriptionResult.textContent = results.map((res, index) => 
+                        `--- ファイル${index + 1} ---\n` +
+                        `トリミング後の音声の長さ: ${res.trimmed_duration}秒\n` +
+                        `文字起こし結果 (ひらがな): ${res.cleaned_transcription}\n` +
+                        `比較結果:\n${res.comparison_results.join("\n")}\n`
+                    ).join("\n\n");
+
+                    // Excelファイルのダウンロードリンクを設定
+                    downloadLink.href = `http://localhost:5000/static/results/${result.excel_file}`;
+                    downloadLink.style.display = 'block';
+
+                    results.forEach((res, index) => {
+                        audioDownloadLinks[index].href = `http://localhost:5000/static/trimmed/${res.trimmed_audio_file}`;
+                        audioDownloadLinks[index].style.display = 'block';
+                    });
+
+                    status.textContent = "文字起こしが完了しました！";
+                } else {
+                    throw new Error("サーバーエラー");
+                }
+            } catch (error) {
+                status.textContent = "エラーが発生しました。";
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
